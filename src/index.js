@@ -1,4 +1,7 @@
+// Import Express app instance
 import { app } from "./app.js";
+
+// Import database connection function
 import connectDb from "./db/index.js";
 
 connectDb()
