@@ -1,0 +1,40 @@
+{
+  "name": "book-review-api",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "src/index.js",
+  "keywords": [
+    "syed",
+    "tasavour"
+  ],
+  "homepage": "https://github.com/syedtasavour/Book-Review-API#readme",
+  "bugs": {
+    "url": "https://github.com/syedtasavour/Book-Review-API/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/syedtasavour/Book-Review-API.git"
+  },
+  "license": "ISC",
+  "author": "Syed Tasavour",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "prettier": "3.5.3"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.15.1",
+    "mongoose-aggregate-paginate-v2": "^1.1.4",
+    "multer": "^2.0.1"
+  }
+}
