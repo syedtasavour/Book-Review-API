@@ -20,6 +20,8 @@ The total time spent on the project is 4 hours and 59 minutes.
 - **Database Schema Design:** [Database Schema](database.md)
 - **Postman Collection:** [Postman Collection](backend.postman_collection.json)
 
+### In the Add Book section, the PDF upload is meant for uploading the first two pages of the book, which include the author and other publication details.
+
 ### npm Dependencies
 - `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`: AWS S3 file uploads and pre-signed URLs.
 - `bcryptjs`: Password hashing for authentication.
