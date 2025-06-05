@@ -182,6 +182,40 @@ volumes:
 5. **Test the API**:
    - Access at `http://localhost:3000/api/v1`.
 
+6. **Set Up AWS S3**:
+   - Create a  s3 bucket `bucket-name-here`.
+   - Update `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_S3_BUCKET_NAME` in `.env`.
+   - Apply the following S3 bucket policy to allow public read/write access to the `public/` prefix:
+
+     ```json
+     {
+         "Version": "2012-10-17",
+         "Statement": [
+             {
+                 "Sid": "PublicReadAccess",
+                 "Effect": "Allow",
+                 "Principal": "*",
+                 "Action": "s3:GetObject",
+                 "Resource": "arn:aws:s3:::bucket-name-here/public/*"
+             },
+             {
+                 "Sid": "PublicPutAccess",
+                 "Effect": "Allow",
+                 "Principal": "*",
+                 "Action": [
+                     "s3:PutObject",
+                     "s3:PutObjectAcl"
+                 ],
+                 "Resource": "arn:aws:s3:::bucket-name-here/public/*"
+             }
+         ]
+     }
+     ```
+
+     **⚠️ Warning**: This policy allows *public* read and write access, which is insecure for production. Consider restricting `Principal` to specific IAM roles or using pre-signed URLs.
+
+   - Ensure your AWS credentials have `s3:PutObject` and `s3:GetObject` permissions.
+
 ### Non-Docker Setup
 
 1. **Clone the Repository**:
