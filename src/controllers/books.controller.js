@@ -10,7 +10,7 @@ import {
   getS3FileUrl,
   uploadOnS3,
 } from "../utils/awsStorage.js";
-
+import redis from "../utils/redisConfig.js";
 // Model imports
 import { Book } from "../models/book.model.js";
 import { Review } from "../models/reviews.model.js";
@@ -49,6 +49,9 @@ const addBook = asyncHandler(async (req, res) => {
     await destroyMediaOnS3(imageUrl.key, "books");
     throw new ApiError(500, null, "Failed to add book");
   }
+  const keys = await redis.keys("books:*");
+if (keys.length) await redis.del(...keys);
+
   const image = await getS3FileUrl(book.image);
   const bookPdf = await getS3FileUrl(book.bookUrl);
   book.bookUrl = bookPdf.url;
@@ -61,8 +64,16 @@ const addBook = asyncHandler(async (req, res) => {
 });
 
 const books = asyncHandler(async (req, res) => {
-  const { author, genre } = req.query;
+  const { author, genre , page = 1, limit = 10} = req.query;
 
+   const cacheKey = `books:author:${author.toLowerCase() || "all"}:genre:${genre.toLowerCase() || "all"}:page:${page}:limit:${limit}`;
+const cachedData = await redis.get(cacheKey);
+  if (cachedData) {
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, JSON.parse(cachedData), "Books retrieved from cache successfully"));
+  }
   // Build dynamic match condition with case-insensitive filters
   const matchStage = {};
   if (author) matchStage.author = { $regex: new RegExp(author, "i") };
@@ -82,9 +93,9 @@ const books = asyncHandler(async (req, res) => {
     },
   ]);
 
-  const options = {
-    page: parseInt(req.query.page) || 1,
-    limit: parseInt(req.query.limit) || 10,
+   const options = {
+    page: parseInt(page),
+    limit: parseInt(limit),
   };
 
   const result = await Book.aggregatePaginate(booksAggregate, options);
@@ -101,13 +112,15 @@ const books = asyncHandler(async (req, res) => {
       };
     })
   );
+  const responseData = { books: booksWithImageUrls, meta };
+  await redis.set(cacheKey, JSON.stringify(responseData), "EX", 60 * 60);
 
   return res
     .status(200)
     .json(
       new ApiResponse(
         200,
-        { books: booksWithImageUrls, meta },
+        responseData,
         "Books retrieved successfully"
       )
     );
@@ -118,6 +131,12 @@ const submitReview = asyncHandler(async (req, res) => {
   if (!rating) {
     throw new ApiError(400, null, "Rating and comment are required");
   }
+const keys = await redis.keys(`book:${req.params.Id}:reviews:*`);
+if (keys.length > 0) {
+  await redis.del(...keys);
+}
+
+
   if (!req.params.Id) {
     throw new ApiError(400, null, "Book ID is required");
   }
@@ -155,6 +174,25 @@ const submitReview = asyncHandler(async (req, res) => {
 const getBook = asyncHandler(async (req, res) => {
   const { Id } = req.params;
   const { page = 1, limit = 10 } = req.query;
+ 
+ const cacheKey = `book:${Id}:reviews:${page}:${limit}`;
+
+// Step 1: Check Redis cache
+const cachedData = await redis.get(cacheKey);
+
+if (cachedData) {
+  const parsedData = JSON.parse(cachedData); // ✅ parse before sending
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        parsedData,
+        "Book reviews retrieved from cache successfully"
+      )
+    );
+}
 
   // Validate Book ID
   if (!Id || !isValidObjectId(Id)) {
@@ -242,6 +280,10 @@ const getBook = asyncHandler(async (req, res) => {
     totalPages: Math.ceil(reviewCount / limitNum),
     limit: limitNum,
   };
+    // Cache the book data with reviews
+ // ✅ Cache the full book data with reviews
+await redis.set(cacheKey, JSON.stringify(bookObject), "EX", 60 * 60); // 1 hour
+
 
   return res
     .status(200)

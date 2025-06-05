@@ -2,7 +2,7 @@
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-
+import redis from "../utils/redisConfig.js";
 // Model imports
 import { Review } from "../models/reviews.model.js";
 
@@ -29,6 +29,11 @@ const updateReview = asyncHandler(async (req, res) => {
     if (!updatedReview) {
         throw new ApiError(500, null, "Failed to update review");
     }
+const keys = await redis.keys(`book:${review.bookId}:reviews:*`);
+if (keys.length) {
+  await redis.del(...keys); // simple invalidation
+}
+
     return res
         .status(200)
         .json(new ApiResponse(200, updatedReview, "Review updated successfully"));
@@ -52,7 +57,10 @@ const deleteReview = asyncHandler(async (req, res) => {
   }
 
   await Review.findByIdAndDelete(Id);
-
+const keys = await redis.keys(`book:${review.bookId}:reviews:*`);
+if (keys.length) {
+  await redis.del(...keys); // simple invalidation
+}
   return res.status(200).json(
     new ApiResponse(200, null, "Review deleted successfully")
   );

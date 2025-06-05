@@ -44,12 +44,12 @@ async function compressMedia(localFilePath, options = {}) {
     if (!fs.existsSync(compressedFilePath)) {
       throw new ApiError(500, null, "Failed to create compressed file.");
     }
-
+await fs.promises.unlink(localFilePath);
     console.log("Image compressed successfully:", compressedFilePath);
 
     return { success: true, filePath: compressedFilePath, isCompressed: true };
   } catch (error) {
-    console.error("Error compressing image:", error.message);
+    await fs.promises.unlink(localFilePath);
     return { success: false, error: error.message, isCompressed: false };
   }
 }
@@ -90,11 +90,11 @@ const compressPDF = async (localFilePath, options = {}) => {
       throw new ApiError(500, null, "Failed to create compressed PDF.");
     }
 
-    console.log("PDF compressed successfully:", compressedFilePath);
+   await fs.promises.unlink(localFilePath);
 
     return { success: true, filePath: compressedFilePath, isCompressed: true };
   } catch (error) {
-    console.error("Error compressing PDF:", error.message);
+    await fs.promises.unlink(localFilePath);
     return { success: false, error: error.message, isCompressed: false };
   }
 };
