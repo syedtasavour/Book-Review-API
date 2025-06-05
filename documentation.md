@@ -17,6 +17,7 @@ The total time spent on the project is 4 hours and 59 minutes.
 
 ## Documentation & Resources
 
+- **Database Schema Design:** [Database Schema](database.md)
 - **Postman Collection:** [Postman Collection](backend.postman_collection.json)
 
 ### npm Dependencies
