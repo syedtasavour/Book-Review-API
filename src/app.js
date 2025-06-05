@@ -1,12 +1,16 @@
 // Core imports
 import express from "express";
 import dotenv from "dotenv";
+import rateLimit from "express-rate-limit";
 
 // Middleware imports
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
-
+import mongoSanitize from "express-mongo-sanitize";
+import { xss } from "express-xss-sanitizer";
+import compression from "compression";
+import helmet from "helmet";
 // Initialize environment variables
 dotenv.config({
   path: "./.env",
@@ -22,6 +26,33 @@ app.use(
     })
 )
 
+// Security middleware
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+      },
+    },
+  })
+);
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: (req, res) => (req.user?.role === "admin" ? 500 : 100),
+  message: "Too many requests, please try again later.",
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+});
+app.use(limiter);
+// Sanitization
+app.use(mongoSanitize());
+app.use(xss());
+
+
+app.use(compression());
 if (process.env.IS_PROD !== "true") {
   app.use(morgan("dev"));
 }
