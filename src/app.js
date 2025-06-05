@@ -33,11 +33,13 @@ app.use(cookieParser());
 
 // Route imports
 import userRoutes from "./routes/user.routes.js";
+import booksRoutes from "./routes/books.routes.js";
 
 
 
 // Route declarations
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/books", booksRoutes);
 
 app.get("/", (req, res) => {
     res.status(200).json({

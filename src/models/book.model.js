@@ -5,6 +5,11 @@ import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 // Book Schema
 const bookSchema = new Schema({
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+    required: [true, "User ID is required"],
+  },
   title: {
     type: String,
     required: [true, "Title is required"],
@@ -28,22 +33,10 @@ const bookSchema = new Schema({
   createdAt: {
     type: Date,
     default: Date.now,
-  },
-  averageRating: {
-    type: Number,
-    default: 0,
-  },
-  reviewCount: {
-    type: Number,
-    default: 0,
-  },
+  }
 });
-
-bookSchema.index({ title: "text", author: "text" }); // For search functionality
-bookSchema.index({ genre: 1 }); // For filtering by genre
 
 bookSchema.plugin(mongooseAggregatePaginate);
 
-reviewSchema.index({ bookId: 1, userId: 1 }, { unique: true }); // Ensure one review per user per book
 
 export const Book = mongoose.model("Book", bookSchema);

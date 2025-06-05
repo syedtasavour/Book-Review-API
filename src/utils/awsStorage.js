@@ -114,7 +114,7 @@ const uploadOnS3 = async (
       await fs.promises.unlink(compressedFilePath);
     }
 
-    throw new ApiError(500, null, `Failed to upload profile image: ${error.message}`);
+    throw new ApiError(500, null, `Failed to upload media: ${error.message}`);
   }
 };
 

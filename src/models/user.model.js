@@ -17,7 +17,6 @@ const userSchema = new Schema({
   },
   profile:{
     type: String,
-    required: [true, 'Profile image URL is required'],
   },
   password: {
     type: String,
@@ -30,6 +29,9 @@ const userSchema = new Schema({
     trim: true,
     minlength: [3, 'name must be at least 3 characters'],
   },
+    refreshToken: {
+      type: String,
+    },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -56,6 +58,7 @@ userSchema.methods.isPasswordCorrect = async function (password) {
 
 // Generate Access Token method
 userSchema.methods.generateAccessToken = function () {
+  console.log("Generating access token for user:", process.env.ACCESS_TOKEN_SECRET);
   return jwt.sign(
     {
       _id: this._id,
@@ -74,18 +77,6 @@ userSchema.methods.generateRefreshToken = function () {
   });
 };
 
-// Generate Temporary Token method (e.g., for profile image update or step-based onboarding)
-userSchema.methods.generateTempToken = function () {
-  return jwt.sign(
-    {
-      _id: this._id,
-      type: "temp",
-      email: this.email,
-    },
-    process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: process.env.TEMP_TOKEN_EXPIRY || "15m" }
-  );
-};
 
 // Indexes
 userSchema.index({ email: 1 }, { unique: true });
