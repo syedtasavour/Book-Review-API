@@ -25,6 +25,11 @@ const bookSchema = new Schema({
     required: [true, "Image URL is required"],
     trim: true,
   },
+  bookUrl: {
+    type: String,
+    required: [true, "Book URL is required"],
+    trim: true,
+  },
   genre: {
     type: String,
     required: [true, "Genre is required"],

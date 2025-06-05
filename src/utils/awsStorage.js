@@ -1,8 +1,8 @@
 // AWS SDK Imports
 import {
   S3Client,
-  PutObjectCommand,    // Upload objects
-  GetObjectCommand,    // Retrieve objects
+  PutObjectCommand, // Upload objects
+  GetObjectCommand, // Retrieve objects
   DeleteObjectCommand, // Delete objects
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"; // Generate pre-signed URLs
@@ -16,12 +16,11 @@ import { ApiError } from "./ApiError.js";
 // File System Utilities
 import fs from "fs";
 import path from "path";
-import mime from 'mime-types';  // For determining content type based on file extensions
+import mime from "mime-types"; // For determining content type based on file extensions
 
 // Custom Utilities
-import { compressMedia } from "./compressFiles.js";
+import { compressMedia,compressPDF } from "./compressFiles.js";
 // Configure AWS SDK v3
-
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
@@ -36,66 +35,69 @@ const bucketName = process.env.AWS_S3_BUCKET_NAME;
 
 const uploadOnS3 = async (
   localFilePath,
-  folderName = '',
+  folderName = "",
   isPrivate = false,
   expiresIn = 3600
 ) => {
   let compressedFilePath = null;
-  try {
-    if (!localFilePath) throw new ApiError(404, null, 'Local file path is required.');
-    if (!bucketName) throw new ApiError(500, null, 'S3 bucket name is not configured.');
 
-    // Validate file existence
+  try {
+    if (!localFilePath) {
+      throw new ApiError(400, null, "Local file path is required.");
+    }
+    if (!bucketName) {
+      throw new ApiError(500, null, "S3 bucket name is not configured.");
+    }
     if (!fs.existsSync(localFilePath)) {
       throw new ApiError(404, null, `File not found: ${localFilePath}`);
     }
 
     const fileName = path.basename(localFilePath);
+    const mimeType = mime.lookup(localFilePath);
+    let compressionResult = { success: true, filePath: localFilePath };
 
-    // Compress the media
-    const compressionResult = await compressMedia(localFilePath, {
-      maxWidth: 1024,
-      quality: 35,
-      format: 'jpeg',
-    });
+    // Apply compression only for supported types
+    if (["image/jpeg", "image/png", "image/gif"].includes(mimeType)) {
+      compressionResult = await compressMedia(localFilePath, {
+        maxWidth: 1024,
+        quality: 35,
+        format: "jpeg",
+      });
+    } else if (mimeType === "application/pdf") {
+      compressionResult = await compressPDF(localFilePath, {
+        optimize: true,
+      });
+    }
 
     if (!compressionResult.success) {
-      throw new ApiError(500, null, 'Failed to compress media: ' + compressionResult.error);
+      throw new ApiError(500, null, `Compression failed: ${compressionResult.error}`);
     }
 
     compressedFilePath = compressionResult.filePath;
-
     const fileContent = await fs.promises.readFile(compressedFilePath);
 
-    // Set folder structure (public/private)
-    const baseFolder = isPrivate ? 'private' : 'public';
+    const baseFolder = isPrivate ? "private" : "public";
     const fullFolderPath = folderName ? `${baseFolder}/${folderName}` : baseFolder;
     const filePath = `${fullFolderPath}/${fileName}`;
+    const contentType = mime.lookup(fileName) || "application/octet-stream";
 
-    // Determine content type
-    const contentType = mime.lookup(fileName) || 'application/octet-stream';
-
-    // Upload file to S3
-    const params = {
+    const uploadResult = await s3.send(new PutObjectCommand({
       Bucket: bucketName,
       Key: filePath,
       Body: fileContent,
       ContentType: contentType,
-    };
+    }));
 
-    const uploadResult = await s3.send(new PutObjectCommand(params));
-
-    // Verify upload success
     if (uploadResult.$metadata.httpStatusCode !== 200) {
-      throw new ApiError(500, null, 'Failed to upload file to S3.');
+      throw new ApiError(500, null, "Failed to upload file to S3.");
     }
 
-    // Clean up compressed file if it exists
-    if (fs.existsSync(compressedFilePath)) {
+    // Clean up compressed file (if different from original)
+    if (compressedFilePath !== localFilePath && fs.existsSync(compressedFilePath)) {
       await fs.promises.unlink(compressedFilePath);
     }
 
-    // Generate a signed URL for private files
+    // Generate URL
     let fileUrl = `https://${bucketName}.s3.amazonaws.com/${filePath}`;
     if (isPrivate) {
       fileUrl = await getSignedUrl(
@@ -106,11 +108,10 @@ const uploadOnS3 = async (
     }
 
     return { success: true, url: fileUrl, key: filePath };
-  } catch (error) {
-    console.error('❌ Error uploading file to S3:', error);
 
-    // Clean up compressed file if it exists
-    if (compressedFilePath && fs.existsSync(compressedFilePath)) {
+  } catch (error) {
+    // Clean up temp file
+    if (compressedFilePath && compressedFilePath !== localFilePath && fs.existsSync(compressedFilePath)) {
       await fs.promises.unlink(compressedFilePath);
     }
 
@@ -120,7 +121,7 @@ const uploadOnS3 = async (
 
 const getS3FileUrl = async (fileKey, isPrivate = false, expiresIn = 3600) => {
   try {
-    if (!fileKey) throw new ApiError(403,null,"File key is required.");
+    if (!fileKey) throw new ApiError(403, null, "File key is required.");
 
     if (!isPrivate) {
       // ✅ Public file (Direct URL)
@@ -144,7 +145,7 @@ const getS3FileUrl = async (fileKey, isPrivate = false, expiresIn = 3600) => {
 // Function to delete a file from S3
 const destroyMediaOnS3 = async (fileName) => {
   try {
-    if (!fileName) throw new ApiError(500,null,"File name is required.");
+    if (!fileName) throw new ApiError(500, null, "File name is required.");
 
     const filePath = fileName;
     const params = { Bucket: bucketName, Key: filePath };

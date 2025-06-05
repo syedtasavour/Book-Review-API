@@ -34,12 +34,16 @@ app.use(cookieParser());
 // Route imports
 import userRoutes from "./routes/user.routes.js";
 import booksRoutes from "./routes/books.routes.js";
+import reviewsRoutes from "./routes/reviews.routes.js";
+import searchRoutes from "./routes/search.routes.js";
 
 
 
 // Route declarations
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/books", booksRoutes);
+app.use("/api/v1/reviews", reviewsRoutes);
+app.use("/api/v1/search", searchRoutes);
 
 app.get("/", (req, res) => {
     res.status(200).json({
